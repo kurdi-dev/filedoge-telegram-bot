@@ -1,24 +1,26 @@
 const express = require("express");
 const axios = require("axios");
 const bodyParser = require("body-parser");
+const app = express();
 
-// Configurations
-app.use(bodyParser.json());
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
 
+// Configurations
+app.use(bodyParser.json());
 const url = "https://api.telegram.org/bot";
 const apiToken = process.env.TELEGRAM_TOKEN;
 const port = 80;
-const app = express();
 
 // Express ndpoints
 app.post("/", (req, res) => {
   // console.log(req.body);
   const chatId = req.body.message.chat.id;
-  const sentMessage = req.body.message.text; // Regex for hello
-  if (sentMessage.match(/hello/gi)) {
+  const sentMessageJson = req.body.message; // Regex for hello
+
+  //   if (sentMessage.match(/hello/gi)) {
+  if (true) {
     axios
       .post(`${url}${apiToken}/sendMessage`, {
         chat_id: chatId,
