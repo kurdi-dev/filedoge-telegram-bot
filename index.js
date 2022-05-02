@@ -70,8 +70,8 @@ bot.command("/about", (ctx) => {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: "bot information", callback_data: "bot_info" },
-          { text: "developer", callback_data: "bot_developer" },
+          { text: "🤖 Bot information", callback_data: "bot_info" },
+          { text: "👨‍💻 Developer", callback_data: "bot_developer" },
         ],
       ],
     },
@@ -84,7 +84,29 @@ bot.action("bot_info", (ctx) => {
 });
 bot.action("bot_developer", (ctx) => {
   ctx.answerCbQuery("done!");
-  ctx.reply("bot deveoper options");
+  ctx.reply(
+    "This bot is Developed by Walid, You can see the source code of this bot on GitHub. Ifyou like it Star it!",
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🌐 Website", url: "https://kurdi.dev" }],
+          [{ text: "👨‍💻 GitHub Profile", url: "https://github.com/kurdi-dev" }],
+          [
+            {
+              text: "📲 Twitter Profile",
+              url: "https://twitter.com/kurdi_dev",
+            },
+          ],
+          [
+            {
+              text: "📁 Source Code",
+              url: "https://github.com/Khuzha/oneqrbot",
+            },
+          ],
+        ],
+      },
+    }
+  );
 });
 
 bot.on("text", (ctx) => {
