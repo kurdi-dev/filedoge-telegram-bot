@@ -1,44 +1,46 @@
 const express = require("express");
-const axios = require("axios");
-const bodyParser = require("body-parser");
-const app = express();
+const { Telegraf } = require("telegraf");
+const axios = require("axios"); // to be removed
+const bodyParser = require("body-parser"); // to be removed
 
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
 
-// Configurations
-app.use(bodyParser.json());
-const url = "https://api.telegram.org/bot";
 const apiToken = process.env.TELEGRAM_TOKEN;
+
+if (apiToken === undefined) {
+  throw new Error("BOT_TOKEN must be provided!");
+}
 const port = 80;
 
-// Express ndpoints
-app.post("/", (req, res) => {
-  // console.log(req.body);
-  const chatId = req.body.message.chat.id;
-  const sentMessageJson = req.body.message; // Regex for hello
+const bot = new Telegraf(apiToken);
 
-  //   if (sentMessage.match(/hello/gi)) {
-  if (true) {
-    axios
-      .post(`${url}${apiToken}/sendMessage`, {
-        chat_id: chatId,
-        text: "hello back 👋",
-      })
-      .then((response) => {
-        res.status(200).send(response);
-      })
-      .catch((error) => {
-        res.send(error);
-      });
-  } else {
-    // if no hello present, just respond with 200
-    res.status(200).send({});
-  }
-});
+// Set the bot response here
+bot.on("text", (ctx) => ctx.replyWithHTML("<b>Hello</b>"));
 
-// comment out app.listen() in production, local development use only
+const secretPath = `/telegraf/${bot.secretPathComponent()}`;
+
+// Set telegram webhook
+// For Development:
+// npm install -g localtunnel && lt --port <app port> | then set Webhook to `https://----.localtunnel.me${secretPath}`
+// or use Ngrok server | then set Webhook to `https://----.ngrok.io${secretPath}`
+// ngrok http <app port>
+// For Production:
+// set Webhook to you domain name + scretePath
+
+bot.telegram.setWebhook(`https://d494-62-201-239-90.eu.ngrok.io${secretPath}`);
+console.log("Telegram webhook is set.");
+
+// Express server:
+const app = express();
+
+app.get("/", (req, res) => res.send("Hello World!"));
+
+// Set the bot API endpoint
+app.use(bot.webhookCallback(secretPath));
+
+// If using deta, comment out app.listen() in production, local development use only
 app.listen(port, () => {
   console.log(`Listening on port ${port}`);
 });
