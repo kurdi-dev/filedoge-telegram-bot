@@ -1,7 +1,7 @@
 const express = require("express");
+const fs = require("fs");
 const { Telegraf } = require("telegraf");
-const axios = require("axios"); // TODO: to be removed
-const bodyParser = require("body-parser"); //TODO: to be removed
+const axios = require("axios");
 
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
@@ -17,60 +17,155 @@ if (apiToken === undefined) {
 }
 // Express/Bot server port
 const port = 80;
+const sizeLimit = 500; // allowed file size to upload
 const bot = new Telegraf(apiToken);
+
+// Bot Config
+bot.telegram.setMyCommands([
+  {
+    command: "start",
+    description: "🟢 Check health",
+  },
+  {
+    command: "about",
+    description: "💡 About this bot",
+  },
+]);
 
 //* Bot responses functions here:
 
-async function fileUpload(file, context) {
+async function fileDownloader(url, fileName) {
+  let outputLocationPath = `${tempDir}/${fileName}`;
+  const writer = fs.createWriteStream(outputLocationPath);
+
+  let doneDownloading = false;
+  await axios
+    .get(url, { responseType: "stream" })
+    .then((response) => {
+      return new Promise((resolve, reject) => {
+        response.data.pipe(writer);
+        let error = null;
+        writer.on("error", (err) => {
+          error = err;
+          writer.close();
+          reject(err);
+        });
+        writer.on("close", () => {
+          if (!error) {
+            doneDownloading = true;
+            resolve(true);
+          }
+          //no need to call the reject here, as it will have been called in the
+          //'error' stream;
+        });
+      });
+    })
+    .catch(function (error) {
+      // handle error
+      console.log("Something went wrong while downloading the file");
+    });
+
+  return doneDownloading ? outputLocationPath : false;
+}
+async function uploadToFileDoge(filePath) {
+  const file = fs.createReadStream(filePath);
+  let downloadLink = false;
+  await axios
+    .post(
+      "https://api.filedoge.com/upload",
+      { file },
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    )
+    .then((res) => {
+      downloadLink = res.data?.error
+        ? false
+        : `https://filedoge.com/download/${res.data.token}`;
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  file.close();
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+  return downloadLink;
+}
+
+async function processFile(file, context) {
   let fileSizeInBytes = file.file_size / 1024 / 1024;
-  if (fileSizeInBytes > 250) {
-    context.reply("File size must be under 250MB");
+  if (fileSizeInBytes > sizeLimit) {
+    context.reply(`⚠️ File size must be under ${sizeLimit}MB!`);
   } else {
-    console.log(file.file_name);
-    console.log(file.file_id);
-    console.log(file.file_unique_id);
-    console.log(file.file_size);
-    context.reply("Hello from fileUpload function");
+    console.log("getting file info ...");
+    context.reply("⌛ Processing the file, please wait...");
+    let file_info = await context.telegram.getFileLink(file.file_id);
+    let file_download_link = file_info.href;
+    let file_download_name = file_info.pathname.split("/")[4];
+    const downloadedFile = await fileDownloader(
+      file_download_link,
+      file_download_name
+    );
+    if (downloadedFile) {
+      const downloadLink = await uploadToFileDoge(downloadedFile);
+      if (downloadLink) {
+        context.reply("⬇️ File download link:");
+        context.reply(downloadLink);
+      } else {
+        context.reply(
+          "⚠️ Something went wrong while uploading to FileDoge, please try again!"
+        );
+      }
+    } else {
+      context.reply(
+        "⚠️ There was a problem while uploading your file, please try again!"
+      );
+    }
   }
 }
 
 bot.on("document", async (ctx) => {
-  await fileUpload(ctx.message.document, ctx);
+  await processFile(ctx.message.document, ctx);
 });
 bot.on("photo", async (ctx) => {
   let file = ctx.message.photo[ctx.message.photo.length - 1];
-  file.file_name = "uploaded photo";
-  await fileUpload(file, ctx);
+  await processFile(file, ctx);
 });
 bot.on("video", async (ctx) => {
   let file = ctx.message.video;
-  file.file_name = "uploaded photo";
-  await fileUpload(file, ctx);
+  await processFile(file, ctx);
 });
 bot.on("voice", async (ctx) => {
   let file = ctx.message.voice;
-  file.file_name = "uploaded voice";
-  await fileUpload(file, ctx);
+  await processFile(file, ctx);
 });
 bot.on("audio", async (ctx) => {
-  await fileUpload(ctx.message.audio, ctx);
+  await processFile(ctx.message.audio, ctx);
 });
 bot.on("location", (ctx) => {
-  ctx.reply("Cant upload location as a file!");
+  ctx.reply("⚠️ Can't upload location as a file!");
 });
 bot.on("venue", (ctx) => {
-  ctx.reply("Cant upload location as a file!");
+  ctx.reply("⚠️ Can't upload location as a file!");
 });
 bot.on("contact", (ctx) => {
-  ctx.reply("Not supported, please upload it as file!");
+  ctx.reply("⚠️ Not supported, please upload it as a file!");
 });
 
+bot.command("/start", (ctx) => {
+  ctx.reply(
+    `🤖: Welome to FileDoge Bot 👋\n🔗 Attach any file and I will send the download link for your file so you can use it later or share it with your friends 🥳\n⚠️ Make use the file size is less than ${sizeLimit}MB`
+  );
+});
 bot.command("/about", (ctx) => {
-  bot.telegram.sendMessage(ctx.chat.id, "About this bot", {
+  bot.telegram.sendMessage(ctx.chat.id, "📃 Information about:", {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: "🤖 Bot information", callback_data: "bot_info" },
+          { text: "🤖 This Bot", callback_data: "bot_info" },
           { text: "👨‍💻 Developer", callback_data: "bot_developer" },
         ],
       ],
@@ -79,13 +174,19 @@ bot.command("/about", (ctx) => {
 });
 
 bot.action("bot_info", (ctx) => {
-  ctx.answerCbQuery();
-  ctx.reply("You clicked on bot info");
+  ctx.answerCbQuery("Showing bot info");
+  ctx.replyWithMarkdown(
+    "Name: FileDoge Uploader Bot 🤖 \n" +
+      "Version: 1.0 \n" +
+      "Bot Language: [Nodejs](https://nodejs.org/en/) \n" +
+      "Framework: [Expressjs](https://expressjs.com/) \n" +
+      "Server: [Heroku](https://www.heroku.com/)\n"
+  );
 });
 bot.action("bot_developer", (ctx) => {
   ctx.answerCbQuery("done!");
-  ctx.reply(
-    "This bot is Developed by Walid, You can see the source code of this bot on GitHub. Ifyou like it Star it!",
+  ctx.replyWithMarkdown(
+    "This bot is Developed by [Walid](https://kurdi.dev), You can see the source code of this bot on GitHub. ⭐️ it if you like it 😄",
     {
       reply_markup: {
         inline_keyboard: [
@@ -93,14 +194,14 @@ bot.action("bot_developer", (ctx) => {
           [{ text: "👨‍💻 GitHub Profile", url: "https://github.com/kurdi-dev" }],
           [
             {
-              text: "📲 Twitter Profile",
+              text: "📱 Twitter Profile",
               url: "https://twitter.com/kurdi_dev",
             },
           ],
           [
             {
               text: "📁 Source Code",
-              url: "https://github.com/Khuzha/oneqrbot",
+              url: "https://github.com/kurdi-dev/filedoge-telegram-bot",
             },
           ],
         ],
@@ -110,7 +211,7 @@ bot.action("bot_developer", (ctx) => {
 });
 
 bot.on("text", (ctx) => {
-  ctx.reply("Text is not supported, please attach any file to upload.");
+  ctx.reply("⚠️ Text is not supported, please attach any file to upload.");
 });
 
 //* Rest of the server configurations:
@@ -124,7 +225,10 @@ const secretPath = `/telegraf/${bot.secretPathComponent()}`;
 // For Production:
 // set Webhook to you domain name + scretePath | Must have TLS
 
-bot.telegram.setWebhook(`https://d494-62-201-239-90.eu.ngrok.io${secretPath}`);
+bot.telegram.setWebhook(
+  process.env.BOT_SERVER_URL ||
+    `https://f849-62-201-239-90.eu.ngrok.io${secretPath}`
+);
 console.log("Telegram webhook url updated.");
 
 // Express server:
