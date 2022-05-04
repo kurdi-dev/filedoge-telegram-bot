@@ -11,6 +11,7 @@ if (process.env.NODE_ENV !== "production") {
 const tempDir = process.env.NODE_ENV === "production" ? "/tmp" : "./tmp";
 // Telegram bot token
 const apiToken = process.env.TELEGRAM_TOKEN;
+const serverUrl = process.env.BOT_SERVER_URL;
 
 if (apiToken === undefined) {
   throw new Error("TELEGRAM_TOKEN must be provided!");
@@ -226,7 +227,7 @@ const secretPath = `/telegraf/${bot.secretPathComponent()}`;
 // set Webhook to you domain name + scretePath | Must have TLS
 
 bot.telegram.setWebhook(
-  `${process.env.BOT_SERVER_URL}${secretPath}` ||
+  `${serverUrl}${secretPath}` ||
     `https://f849-62-201-239-90.eu.ngrok.io${secretPath}`
 );
 console.log("Telegram webhook url updated.");
