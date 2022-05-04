@@ -1,4 +1,4 @@
-# Project Title
+# FileDoge Telegram Bot
 
 Telegram files to FileDoge upload - bot, returning download links after upload.
 
