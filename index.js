@@ -16,7 +16,7 @@ if (apiToken === undefined) {
   throw new Error("TELEGRAM_TOKEN must be provided!");
 }
 // Express/Bot server port
-const port = process.env.PORT || 8443;
+const port = process.env.PORT || 80;
 const sizeLimit = 500; // allowed file size to upload
 const bot = new Telegraf(apiToken);
 
@@ -226,8 +226,8 @@ const secretPath = `/telegraf/${bot.secretPathComponent()}`;
 // set Webhook to you domain name + scretePath | Must have TLS
 
 bot.telegram.setWebhook(
-  `${process.env.BOT_SERVER_URL}:${port}${secretPath}` ||
-    `https://f849-62-201-239-90.eu.ngrok.io:${port}${secretPath}`
+  `${process.env.BOT_SERVER_URL}${secretPath}` ||
+    `https://f849-62-201-239-90.eu.ngrok.io${secretPath}`
 );
 console.log("Telegram webhook url updated.");
 
