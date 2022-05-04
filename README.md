@@ -58,9 +58,9 @@ To run this project, you will need to add the following environment variables to
 
 ## Deployment
 
-# Deploy to Heroku
+### Deploy to [Heroku](https://www.heroku.com)
 
-To deploy this project on Heroku, after loging in run
+To deploy this project on Heroku, after cloning the re and loging in run
 
 ```bash
 heroku create
@@ -69,13 +69,43 @@ heroku create
 Update/Set Environmental Varibales:
 
 ```bash
-heroku config:set TELEGRAM_TOKEN=<your botfather bot token>  BOT_SERVER_URL=<your newly created Dyno URL>  PORT=8443
+heroku config:set TELEGRAM_TOKEN=<your botfather bot token>  BOT_SERVER_URL=<your newly created Dyno URL>
 ```
 
 Then, push the code to Heroku
 
 ```bash
 git push heroku main
+```
+
+PS: you might have to restart the Dyno to reconfigur the new seted environment variables.
+
+### Deploy to [Deta](https://deta.sh)
+
+To deploy this project on Deta, after loging in run
+
+```bash
+deta new --node
+```
+
+Update your `BOT_SERVER_URL` varibale inside `.env` file according to the newly created Micro's endpoint URL.
+
+See the Micro's endpoint url:
+
+```bash
+deta details
+```
+
+After updating the `.env` file, update the online Micro's environment variables from the local `.env` file with the deta update command:
+
+```bash
+deta update -e .env
+```
+
+Then, deploy the bot to Deta:
+
+```bash
+deta deploy
 ```
 
 ## License
