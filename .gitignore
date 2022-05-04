@@ -1,4 +1,5 @@
 .env
 .deta
-
+tmp/*.*
+!tmp/.keep
 node_modules
